@@ -1,0 +1,2113 @@
+from direct.showbase.ShowBase import ShowBase
+from direct.task import Task
+
+from panda3d.core import (
+    AmbientLight,
+    DirectionalLight,
+    Point3,
+    Vec2,
+    Vec3,
+    Geom,
+    GeomNode,
+    GeomVertexData,
+    GeomVertexFormat,
+    GeomVertexWriter,
+    GeomTriangles,
+    GeomVertexReader,
+    LineSegs
+)
+
+import math
+import socket
+import threading
+import io
+import qrcode
+from flask import Flask, Response, request
+
+from direct.gui.DirectGui import DirectFrame, DirectButton, DirectLabel
+
+
+# ==========================================================
+# APLICAÇÃO 3D
+# ==========================================================
+
+
+# ==========================================================
+# SERVIDOR WEB PARA O VISUALIZADOR 3D DO CELULAR
+# ==========================================================
+
+servidor_web = Flask(__name__)
+
+
+def obter_ip_rede():
+    """Obtém o IP da máquina na rede local."""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.connect(("8.8.8.8", 80))
+        ip = sock.getsockname()[0]
+        sock.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+
+def criar_pagina_3d(objeto):
+    """Página 3D aberta pelo celular após ler o QR Code."""
+
+    nomes = {
+        "cubo": "Cubo",
+        "esfera": "Esfera",
+        "triangulo": "Triângulo",
+        "cone": "Cone"
+    }
+
+    nome = nomes.get(objeto, "Objeto 3D")
+
+    # O navegador do celular cria a geometria usando Three.js.
+    # Os controles OrbitControls permitem rotacionar, mover e dar zoom.
+    return f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{nome} - Visualizador 3D</title>
+<style>
+html, body {{
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #101010;
+    font-family: Arial, sans-serif;
+}}
+#titulo {{
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 10;
+    color: white;
+    background: rgba(0,0,0,.65);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 18px;
+}}
+#ajuda {{
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    color: white;
+    background: rgba(0,0,0,.65);
+    padding: 9px 13px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 13px;
+}}
+canvas {{ display: block; }}
+</style>
+</head>
+<body>
+<div id="titulo">{nome}</div>
+<div id="ajuda">Arraste para rotacionar • Pinça para zoom • Dois dedos para mover</div>
+
+<script type="importmap">
+{{
+  "imports": {{
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+  }}
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import {{ OrbitControls }} from 'three/addons/controls/OrbitControls.js';
+
+const cena = new THREE.Scene();
+cena.background = new THREE.Color(0x101010);
+
+const camera = new THREE.PerspectiveCamera(
+    45,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+);
+camera.position.set(5, 4, 7);
+
+const renderer = new THREE.WebGLRenderer({{ antialias: true }});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.enablePan = true;
+controls.enableZoom = true;
+controls.target.set(0, 0, 0);
+
+const luzAmbiente = new THREE.AmbientLight(0xffffff, 1.5);
+cena.add(luzAmbiente);
+
+const luzDirecional = new THREE.DirectionalLight(0xffffff, 2);
+luzDirecional.position.set(5, 8, 6);
+cena.add(luzDirecional);
+
+const material = new THREE.MeshStandardMaterial({{
+    color: 0x4f8cff,
+    roughness: 0.35,
+    metalness: 0.05
+}});
+
+let objeto;
+
+if ("{objeto}" === "cubo") {{
+    objeto = new THREE.Mesh(
+        new THREE.BoxGeometry(2.5, 2.5, 2.5),
+        material
+    );
+}}
+
+if ("{objeto}" === "esfera") {{
+    objeto = new THREE.Mesh(
+        new THREE.SphereGeometry(1.5, 48, 32),
+        material
+    );
+}}
+
+if ("{objeto}" === "triangulo") {{
+    // Prisma triangular equivalente ao modelo do aplicativo.
+    const forma = new THREE.BufferGeometry();
+
+    const vertices = new Float32Array([
+        -1.0, -1.25, -0.75,
+         1.0, -1.25, -0.75,
+         0.0,  1.25, -0.75,
+
+        -1.0, -1.25,  0.75,
+         1.0, -1.25,  0.75,
+         0.0,  1.25,  0.75
+    ]);
+
+    const indices = [
+        0,1,2,
+        3,5,4,
+        0,3,4, 0,4,1,
+        0,2,5, 0,5,3,
+        1,4,5, 1,5,2
+    ];
+
+    forma.setAttribute(
+        'position',
+        new THREE.BufferAttribute(vertices, 3)
+    );
+    forma.setIndex(indices);
+    forma.computeVertexNormals();
+
+    objeto = new THREE.Mesh(forma, material);
+}}
+
+if ("{objeto}" === "cone") {{
+    objeto = new THREE.Mesh(
+        new THREE.ConeGeometry(1.5, 3.0, 48),
+        material
+    );
+}}
+
+if (objeto) {{
+    cena.add(objeto);
+
+    // Arestas visíveis para facilitar a leitura do formato.
+    const arestas = new THREE.LineSegments(
+        new THREE.EdgesGeometry(objeto.geometry),
+        new THREE.LineBasicMaterial({{ color: 0x111111 }})
+    );
+    objeto.add(arestas);
+}}
+
+window.addEventListener('resize', () => {{
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}});
+
+function animar() {{
+    requestAnimationFrame(animar);
+    controls.update();
+    renderer.render(cena, camera);
+}}
+
+animar();
+</script>
+</body>
+</html>"""
+
+
+@servidor_web.route("/objeto/<nome>")
+def visualizar_objeto(nome):
+    if nome not in ("cubo", "esfera", "triangulo", "cone"):
+        return "Objeto não encontrado.", 404
+
+    return criar_pagina_3d(nome)
+
+
+@servidor_web.route("/qrcode/<nome>")
+def fornecer_qrcode(nome):
+    if nome not in ("cubo", "esfera", "triangulo", "cone"):
+        return "Objeto não encontrado.", 404
+
+    ip = obter_ip_rede()
+    url = f"http://{ip}:5000/objeto/{nome}"
+
+    imagem = qrcode.make(url)
+    buffer = io.BytesIO()
+    imagem.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    return Response(buffer.getvalue(), mimetype="image/png")
+
+
+def iniciar_servidor_web():
+    servidor_web.run(
+        host="0.0.0.0",
+        port=5000,
+        debug=False,
+        use_reloader=False
+    )
+
+
+class Aplicacao3D(ShowBase):
+
+    def __init__(self):
+
+        super().__init__()
+
+        # ==================================================
+        # SERVIDOR WEB PARA O CELULAR
+        # ==================================================
+        self.ip_rede = obter_ip_rede()
+
+        self.thread_servidor = threading.Thread(
+            target=iniciar_servidor_web,
+            daemon=True
+        )
+        self.thread_servidor.start()
+
+        print("=" * 60)
+        print("SERVIDOR 3D PARA CELULAR")
+        print(f"IP da máquina: {self.ip_rede}")
+        print("Porta: 5000")
+        print("=" * 60)
+
+        # ==================================================
+        # CONFIGURAÇÕES GERAIS
+        # ==================================================
+
+        # Desativa o controle padrão da câmera do Panda3D.
+        self.disableMouse()
+
+
+        # ==================================================
+        # BIBLIOTECA DE OBJETOS 3D
+        # ==================================================
+
+        self.biblioteca_objetos = {
+            "cubo": "Cubo",
+            "esfera": "Esfera",
+            "triangulo": "Triângulo",
+            "cone": "Cone"
+        }
+
+        # Guarda o objeto atualmente carregado.
+        self.modelo_atual = None
+
+        # Nome do objeto atualmente carregado.
+        self.objeto_atual = None
+
+
+        # ==================================================
+        # CONFIGURAÇÕES DA CÂMERA
+        # ==================================================
+
+        # --------------------------------------------------
+        # ALVO DA CÂMERA
+        # --------------------------------------------------
+
+        self.alvo = Point3(
+            0,
+            0,
+            0
+        )
+
+
+        # --------------------------------------------------
+        # ÂNGULO HORIZONTAL
+        # --------------------------------------------------
+
+        self.yaw = 0.0
+
+
+        # --------------------------------------------------
+        # ÂNGULO VERTICAL
+        # --------------------------------------------------
+
+        self.pitch = 20.0
+
+
+        # --------------------------------------------------
+        # DISTÂNCIA DA CÂMERA
+        # --------------------------------------------------
+
+        self.distancia = 12.0
+
+
+        # ==================================================
+        # VALORES INICIAIS PARA RESET
+        # ==================================================
+
+        self.yaw_inicial = 0.0
+
+        self.pitch_inicial = 20.0
+
+        self.distancia_inicial = 12.0
+
+        self.alvo_inicial = Point3(
+            0,
+            0,
+            0
+        )
+
+
+        # ==================================================
+        # LIMITES DA CÂMERA
+        # ==================================================
+
+        # Evita que a câmera fique de cabeça para baixo.
+
+        self.pitch_minimo = -89.0
+
+        self.pitch_maximo = 89.0
+
+
+        # Distância mínima e máxima.
+
+        self.distancia_minima = 3.0
+
+        self.distancia_maxima = 50.0
+
+
+        # ==================================================
+        # SENSIBILIDADE DA ROTAÇÃO
+        # ==================================================
+
+        self.sensibilidade_rotacao = 180.0
+
+
+        # ==================================================
+        # SENSIBILIDADE DO PAN
+        # ==================================================
+
+        self.sensibilidade_pan = 1.0
+
+
+        # ==================================================
+        # SENSIBILIDADE DO ZOOM
+        # ==================================================
+
+        self.sensibilidade_zoom = 1.0
+
+
+        # ==================================================
+        # CONTROLE DO MOUSE
+        # ==================================================
+
+        self.mouse_rotacionando = False
+
+        self.mouse_movendo = False
+
+        self.mouse_anterior = None
+
+
+        # ==================================================
+        # ILUMINAÇÃO
+        # ==================================================
+
+        self.configurar_luzes()
+
+
+        # ==================================================
+        # CARREGA OBJETO INICIAL
+        # ==================================================
+
+        self.carregar_objeto("cubo")
+
+        # ==================================================
+        # INTERFACE GRÁFICA DA BIBLIOTECA
+        # ==================================================
+
+        self.criar_interface_biblioteca()
+
+        # ==================================================
+        # QR CODES DOS OBJETOS
+        # ==================================================
+        self.criar_interface_qrcode()
+
+        # ==================================================
+        # EVENTOS DO MOUSE
+        # ==================================================
+
+        # --------------------------------------------------
+        # BOTÃO ESQUERDO
+        # ROTACIONAR / ORBITAR
+        # --------------------------------------------------
+
+        self.accept(
+            "mouse1",
+            self._mouse_down,
+            ["rotacao"]
+        )
+
+        self.accept(
+            "mouse1-up",
+            self._mouse_up,
+            ["rotacao"]
+        )
+
+
+        # --------------------------------------------------
+        # BOTÃO DIREITO
+        # PAN
+        # --------------------------------------------------
+
+        self.accept(
+            "mouse3",
+            self._mouse_down,
+            ["pan"]
+        )
+
+        self.accept(
+            "mouse3-up",
+            self._mouse_up,
+            ["pan"]
+        )
+
+
+        # --------------------------------------------------
+        # BOTÃO DO MEIO
+        # PAN
+        # --------------------------------------------------
+
+        self.accept(
+            "mouse2",
+            self._mouse_down,
+            ["pan"]
+        )
+
+        self.accept(
+            "mouse2-up",
+            self._mouse_up,
+            ["pan"]
+        )
+
+
+        # ==================================================
+        # ZOOM
+        # ==================================================
+
+        self.accept(
+            "wheel_up",
+            self._zoom,
+            [1]
+        )
+
+        self.accept(
+            "wheel_down",
+            self._zoom,
+            [-1]
+        )
+
+
+        # ==================================================
+        # TECLAS PARA TROCAR OBJETOS
+        # ==================================================
+
+        # C = Cubo
+        self.accept(
+            "c",
+            self._carregar_cubo
+        )
+
+        self.accept(
+            "C",
+            self._carregar_cubo
+        )
+
+
+        # E = Esfera
+        self.accept(
+            "e",
+            self._carregar_esfera
+        )
+
+        self.accept(
+            "E",
+            self._carregar_esfera
+        )
+
+
+        # T = Triângulo
+        self.accept(
+            "t",
+            self._carregar_triangulo
+        )
+
+        self.accept(
+            "T",
+            self._carregar_triangulo
+        )
+
+
+        # O = Cone
+        self.accept(
+            "o",
+            self._carregar_cone
+        )
+
+        self.accept(
+            "O",
+            self._carregar_cone
+        )
+
+
+        # ==================================================
+        # RESET
+        # ==================================================
+
+        self.accept(
+            "r",
+            self._resetar_camera
+        )
+
+        self.accept(
+            "R",
+            self._resetar_camera
+        )
+
+
+        # ==================================================
+        # POSICIONA A CÂMERA PELA PRIMEIRA VEZ
+        # ==================================================
+
+        self._atualizar_camera()
+
+
+        # ==================================================
+        # TASK PRINCIPAL DO MOUSE
+        # ==================================================
+
+        self.taskMgr.add(
+            self._task_mouse,
+            "task_mouse"
+        )
+
+
+    # ======================================================
+    # INTERFACE GRÁFICA DA BIBLIOTECA
+    # ======================================================
+    def criar_interface_biblioteca(self):
+
+        # --------------------------------------------------
+        # PAINEL PRINCIPAL
+        # --------------------------------------------------
+        # Painel pequeno no canto superior esquerdo.
+        self.painel_biblioteca = DirectFrame(
+            parent=self.aspect2d,
+            frameColor=(0.06, 0.06, 0.06, 0.88),
+
+            # Painel bem menor.
+            frameSize=(-0.55, 0.55, -0.48, 0.48),
+
+            # Canto superior esquerdo.
+            pos=(-1.20, 0, 0.48)
+        )
+
+        # --------------------------------------------------
+        # TÍTULO
+        # --------------------------------------------------
+        self.titulo_biblioteca = DirectLabel(
+            parent=self.painel_biblioteca,
+
+            text="BIBLIOTECA 3D",
+
+            # Texto menor.
+            scale=0.045,
+
+            text_fg=(1, 1, 1, 1),
+
+            frameColor=(0, 0, 0, 0),
+
+            # Parte superior do painel.
+            pos=(0, 0, 0.34)
+        )
+
+        # --------------------------------------------------
+        # BOTÃO CUBO
+        # --------------------------------------------------
+        self.botao_cubo = DirectButton(
+            parent=self.painel_biblioteca,
+
+            text="Cubo",
+
+            scale=0.045,
+
+            # Botão menor.
+            frameSize=(-2.8, 2.8, -0.45, 0.45),
+
+            pos=(0, 0, 0.20),
+
+            command=self.carregar_objeto,
+
+            extraArgs=["cubo"]
+        )
+
+        # --------------------------------------------------
+        # BOTÃO ESFERA
+        # --------------------------------------------------
+        self.botao_esfera = DirectButton(
+            parent=self.painel_biblioteca,
+
+            text="Esfera",
+
+            scale=0.045,
+
+            frameSize=(-2.8, 2.8, -0.45, 0.45),
+
+            pos=(0, 0, 0.05),
+
+            command=self.carregar_objeto,
+
+            extraArgs=["esfera"]
+        )
+
+        # --------------------------------------------------
+        # BOTÃO TRIÂNGULO
+        # --------------------------------------------------
+        self.botao_triangulo = DirectButton(
+            parent=self.painel_biblioteca,
+
+            text="Triângulo",
+
+            scale=0.045,
+
+            frameSize=(-2.8, 2.8, -0.45, 0.45),
+
+            pos=(0, 0, -0.10),
+
+            command=self.carregar_objeto,
+
+            extraArgs=["triangulo"]
+        )
+
+        # --------------------------------------------------
+        # BOTÃO CONE
+        # --------------------------------------------------
+        self.botao_cone = DirectButton(
+            parent=self.painel_biblioteca,
+
+            text="Cone",
+
+            scale=0.045,
+
+            frameSize=(-2.8, 2.8, -0.45, 0.45),
+
+            pos=(0, 0, -0.25),
+
+            command=self.carregar_objeto,
+
+            extraArgs=["cone"]
+        )
+
+        # --------------------------------------------------
+        # OBJETO ATUAL
+        # --------------------------------------------------
+        self.objeto_selecionado_label = DirectLabel(
+            parent=self.painel_biblioteca,
+
+            text="Objeto atual: " + self.biblioteca_objetos[self.objeto_atual],
+
+            scale=0.032,
+
+            text_fg=(0.75, 0.75, 0.75, 1),
+
+            frameColor=(0, 0, 0, 0),
+
+            # Parte inferior do painel.
+            pos=(0, 0, -0.39)
+        )
+
+
+
+    # ======================================================
+    # INTERFACE DOS QR CODES
+    # ======================================================
+    def criar_interface_qrcode(self):
+
+        self.painel_qrcode = DirectFrame(
+            parent=self.aspect2d,
+            frameColor=(0.06, 0.06, 0.06, 0.94),
+            frameSize=(-0.48, 0.48, -0.62, 0.62),
+            pos=(0.55, 0, 0.25)
+        )
+
+        self.titulo_qrcode = DirectLabel(
+            parent=self.painel_qrcode,
+            text="QR CODE",
+            scale=0.05,
+            text_fg=(1, 1, 1, 1),
+            frameColor=(0, 0, 0, 0),
+            pos=(0, 0, 0.49)
+        )
+
+        self.qr_nome = DirectLabel(
+            parent=self.painel_qrcode,
+            text="Cubo",
+            scale=0.045,
+            text_fg=(0.85, 0.85, 0.85, 1),
+            frameColor=(0, 0, 0, 0),
+            pos=(0, 0, 0.38)
+        )
+
+        self.botao_qr_cubo = DirectButton(
+            parent=self.painel_qrcode,
+            text="QR CUBO",
+            scale=0.04,
+            frameSize=(-3, 3, -0.45, 0.45),
+            pos=(0, 0, -0.43),
+            command=self.mostrar_qrcode,
+            extraArgs=["cubo"]
+        )
+
+        self.botao_qr_esfera = DirectButton(
+            parent=self.painel_qrcode,
+            text="QR ESFERA",
+            scale=0.04,
+            frameSize=(-3, 3, -0.45, 0.45),
+            pos=(0, 0, -0.30),
+            command=self.mostrar_qrcode,
+            extraArgs=["esfera"]
+        )
+
+        self.botao_qr_triangulo = DirectButton(
+            parent=self.painel_qrcode,
+            text="QR TRIÂNGULO",
+            scale=0.04,
+            frameSize=(-3, 3, -0.45, 0.45),
+            pos=(0, 0, -0.17),
+            command=self.mostrar_qrcode,
+            extraArgs=["triangulo"]
+        )
+
+        self.botao_qr_cone = DirectButton(
+            parent=self.painel_qrcode,
+            text="QR CONE",
+            scale=0.04,
+            frameSize=(-3, 3, -0.45, 0.45),
+            pos=(0, 0, -0.04),
+            command=self.mostrar_qrcode,
+            extraArgs=["cone"]
+        )
+
+        self.label_rede = DirectLabel(
+            parent=self.painel_qrcode,
+            text=f"Celular e PC na mesma rede\\nhttp://{self.ip_rede}:5000",
+            scale=0.027,
+            text_fg=(0.7, 0.7, 0.7, 1),
+            frameColor=(0, 0, 0, 0),
+            pos=(0, 0, -0.53)
+        )
+
+    def mostrar_qrcode(self, nome):
+
+        ip = obter_ip_rede()
+        url = f"http://{ip}:5000/objeto/{nome}"
+
+        print()
+        print("=" * 60)
+        print(f"QR CODE: {self.biblioteca_objetos[nome]}")
+        print(f"URL: {url}")
+        print("=" * 60)
+
+        # O QR é aberto em uma janela separada pelo navegador padrão.
+        # Isso permite que o celular leia o QR mesmo sem depender
+        # de recursos gráficos adicionais do Panda3D.
+        try:
+            import webbrowser
+            webbrowser.open(
+                f"http://{ip}:5000/qrcode/{nome}"
+            )
+        except Exception as erro:
+            print("Não foi possível abrir o QR Code:", erro)
+
+        if hasattr(self, "qr_nome"):
+            self.qr_nome["text"] = self.biblioteca_objetos[nome]
+
+
+    # ======================================================
+    # CONFIGURAR LUZES
+    # ======================================================
+
+    def configurar_luzes(self):
+
+        # --------------------------------------------------
+        # LUZ AMBIENTE
+        # --------------------------------------------------
+
+        luz_ambiente = AmbientLight(
+            "luz_ambiente"
+        )
+
+        luz_ambiente.setColor(
+            (0.35, 0.35, 0.35, 1)
+        )
+
+        objeto_luz_ambiente = self.render.attachNewNode(
+            luz_ambiente
+        )
+
+        self.render.setLight(
+            objeto_luz_ambiente
+        )
+
+
+        # --------------------------------------------------
+        # LUZ DIRECIONAL
+        # --------------------------------------------------
+
+        luz_direcional = DirectionalLight(
+            "luz_direcional"
+        )
+
+        luz_direcional.setColor(
+            (0.9, 0.9, 0.9, 1)
+        )
+
+        objeto_luz_direcional = self.render.attachNewNode(
+            luz_direcional
+        )
+
+        # Direção da luz.
+
+        objeto_luz_direcional.setHpr(
+            -45,
+            -45,
+            0
+        )
+
+        self.render.setLight(
+            objeto_luz_direcional
+        )
+
+
+    # ======================================================
+    # CARREGAR OBJETO
+    # ======================================================
+
+    def carregar_objeto(self, nome):
+
+        # --------------------------------------------------
+        # VERIFICA SE O OBJETO EXISTE NA BIBLIOTECA
+        # --------------------------------------------------
+
+        if nome not in self.biblioteca_objetos:
+
+            print(
+                "Objeto não encontrado na biblioteca:",
+                nome
+            )
+
+            return
+
+
+        # --------------------------------------------------
+        # REMOVE O OBJETO ANTERIOR
+        # --------------------------------------------------
+
+        self.remover_objeto_atual()
+
+
+        # --------------------------------------------------
+        # CRIA O NOVO OBJETO
+        # --------------------------------------------------
+
+        if nome == "cubo":
+
+            self.modelo_atual = self.criar_cubo()
+
+
+        elif nome == "esfera":
+
+            self.modelo_atual = self.criar_esfera()
+
+
+        elif nome == "triangulo":
+
+            self.modelo_atual = self.criar_triangulo()
+
+
+        elif nome == "cone":
+
+            self.modelo_atual = self.criar_cone()
+
+
+        # --------------------------------------------------
+        # COLOCA O OBJETO NA CENA
+        # --------------------------------------------------
+
+        if self.modelo_atual is not None:
+
+            self.modelo_atual.reparentTo(
+                self.render
+            )
+
+            self.modelo_atual.setPos(
+                0,
+                0,
+                0
+            )
+
+            self.modelo_atual.setScale(
+                2
+            )
+
+            self.objeto_atual = nome
+
+            # Atualiza a interface, caso ela já tenha sido criada.
+            if hasattr(self, "objeto_selecionado_label"):
+                self.objeto_selecionado_label["text"] = (
+                    "Objeto atual: " + self.biblioteca_objetos[nome]
+                )
+
+            print(
+                "Objeto carregado:",
+                self.biblioteca_objetos[nome]
+            )
+
+
+    # ======================================================
+    # REMOVER OBJETO ATUAL
+    # ======================================================
+
+    def remover_objeto_atual(self):
+
+        if self.modelo_atual is not None:
+
+            self.modelo_atual.removeNode()
+
+            self.modelo_atual = None
+
+            self.objeto_atual = None
+
+
+    # ======================================================
+    # CRIAR CUBO
+    # ======================================================
+
+    def criar_cubo(self):
+
+        # O cubo padrão do Panda3D.
+
+        cubo = self.loader.loadModel(
+            "models/box"
+        )
+
+        return cubo
+
+
+    # ======================================================
+    # CRIAR ESFERA
+    # ======================================================
+
+    def criar_esfera(self):
+
+        # --------------------------------------------------
+        # CONFIGURAÇÕES
+        # --------------------------------------------------
+
+        raio = 1.0
+
+        segmentos = 32
+
+        anéis = 16
+
+
+        # --------------------------------------------------
+        # FORMATO DOS VÉRTICES
+        # --------------------------------------------------
+
+        formato = GeomVertexFormat.getV3n3()
+
+        dados = GeomVertexData(
+            "esfera",
+            formato,
+            Geom.UHStatic
+        )
+
+        dados.setNumRows(
+            (anéis + 1) * segmentos
+        )
+
+
+        # --------------------------------------------------
+        # ESCRITORES
+        # --------------------------------------------------
+
+        vertices = GeomVertexWriter(
+            dados,
+            "vertex"
+        )
+
+        normais = GeomVertexWriter(
+            dados,
+            "normal"
+        )
+
+
+        # --------------------------------------------------
+        # VÉRTICES
+        # --------------------------------------------------
+
+        for i in range(anéis + 1):
+
+            phi = math.pi * i / anéis
+
+            z = raio * math.cos(phi)
+
+            raio_horizontal = (
+                raio * math.sin(phi)
+            )
+
+            for j in range(segmentos):
+
+                theta = (
+                    2
+                    *
+                    math.pi
+                    *
+                    j
+                    /
+                    segmentos
+                )
+
+                x = (
+                    raio_horizontal
+                    *
+                    math.cos(theta)
+                )
+
+                y = (
+                    raio_horizontal
+                    *
+                    math.sin(theta)
+                )
+
+                vertices.addData3f(
+                    x,
+                    y,
+                    z
+                )
+
+                # Normal da esfera.
+
+                comprimento = math.sqrt(
+                    x * x
+                    +
+                    y * y
+                    +
+                    z * z
+                )
+
+                if comprimento != 0:
+
+                    nx = x / comprimento
+
+                    ny = y / comprimento
+
+                    nz = z / comprimento
+
+                else:
+
+                    nx = 0
+
+                    ny = 0
+
+                    nz = 1
+
+                normais.addData3f(
+                    nx,
+                    ny,
+                    nz
+                )
+
+
+        # --------------------------------------------------
+        # TRIÂNGULOS
+        # --------------------------------------------------
+
+        primitivas = GeomTriangles(
+            Geom.UHStatic
+        )
+
+
+        for i in range(anéis):
+
+            for j in range(segmentos):
+
+                atual = (
+                    i * segmentos
+                    + j
+                )
+
+                proximo = (
+                    i * segmentos
+                    +
+                    (
+                        (j + 1)
+                        %
+                        segmentos
+                    )
+                )
+
+                abaixo = (
+                    (i + 1)
+                    *
+                    segmentos
+                    + j
+                )
+
+                abaixo_proximo = (
+                    (i + 1)
+                    *
+                    segmentos
+                    +
+                    (
+                        (j + 1)
+                        %
+                        segmentos
+                    )
+                )
+
+
+                primitivas.addVertices(
+                    atual,
+                    abaixo,
+                    proximo
+                )
+
+                primitivas.addVertices(
+                    proximo,
+                    abaixo,
+                    abaixo_proximo
+                )
+
+
+        # --------------------------------------------------
+        # CRIA GEOMETRIA
+        # --------------------------------------------------
+
+        geom = Geom(
+            dados
+        )
+
+        geom.addPrimitive(
+            primitivas
+        )
+
+
+        # --------------------------------------------------
+        # CRIA NODE
+        # --------------------------------------------------
+
+        node = GeomNode(
+            "esfera"
+        )
+
+        node.addGeom(
+            geom
+        )
+
+        esfera = self.render.attachNewNode(
+            node
+        )
+
+        return esfera
+
+
+    # ======================================================
+    # CRIAR TRIÂNGULO
+    # ======================================================
+
+    def criar_triangulo(self):
+    #Cria um prisma triangular 3D com faces corretas e arestas visíveis
+
+    # Dimensões do triângulo
+        largura = 2.0
+        altura = 2.5
+        profundidade = 1.5
+
+        # Vértices da frente
+        A = (-largura / 2, -profundidade / 2, -altura / 2)
+        B = ( largura / 2, -profundidade / 2, -altura / 2)
+        C = (0,            -profundidade / 2,  altura / 2)
+
+        # Vértices de trás
+        D = (-largura / 2,  profundidade / 2, -altura / 2)
+        E = ( largura / 2,  profundidade / 2, -altura / 2)
+        F = (0,             profundidade / 2,  altura / 2)
+
+        # Cada face possui seus próprios vértices.
+        # Isso permite que cada face tenha uma normal correta.
+        faces = [
+            # Frente
+            (A, B, C),
+
+            # Trás
+            (D, F, E),
+
+            # Base
+            (A, D, E, B),
+
+            # Lado esquerdo
+            (A, C, F, D),
+
+            # Lado direito
+            (B, E, F, C)
+        ]
+
+        # Formato dos vértices: posição + normal
+        vdata = GeomVertexData(
+            "Triangulo3D",
+            GeomVertexFormat.getV3n3(),
+            Geom.UHStatic
+        )
+
+        vertex = GeomVertexWriter(vdata, "vertex")
+        normal = GeomVertexWriter(vdata, "normal")
+
+        triangles = GeomTriangles(Geom.UHStatic)
+
+        indice = 0
+
+        # Cria as faces
+        for face in faces:
+
+            # Calcula a normal da face
+            v1 = Vec3(*face[0])
+            v2 = Vec3(*face[1])
+            v3 = Vec3(*face[2])
+
+            normal_face = (v2 - v1).cross(v3 - v1)
+            normal_face.normalize()
+
+            # Adiciona os vértices
+            for ponto in face:
+                vertex.addData3f(*ponto)
+                normal.addData3f(
+                    normal_face.x,
+                    normal_face.y,
+                    normal_face.z
+                )
+
+            # Triângulo
+            if len(face) == 3:
+                triangles.addVertices(
+                    indice,
+                    indice + 1,
+                    indice + 2
+                )
+
+            # Quadrilátero dividido em dois triângulos
+            elif len(face) == 4:
+                triangles.addVertices(
+                    indice,
+                    indice + 1,
+                    indice + 2
+                )
+
+                triangles.addVertices(
+                    indice,
+                    indice + 2,
+                    indice + 3
+                )
+
+            indice += len(face)
+
+        # Cria a geometria
+        geom = Geom(vdata)
+        geom.addPrimitive(triangles)
+
+        node = GeomNode("Triangulo3D")
+        node.addGeom(geom)
+
+        triangulo = self.render.attachNewNode(node)
+
+        # ---------------------------------------------------------
+        # CRIAÇÃO DAS ARESTAS
+        # ---------------------------------------------------------
+
+        linhas = LineSegs()
+        linhas.setThickness(2.5)
+
+        # Arestas da frente
+        linhas.moveTo(*A)
+        linhas.drawTo(*B)
+
+        linhas.moveTo(*B)
+        linhas.drawTo(*C)
+
+        linhas.moveTo(*C)
+        linhas.drawTo(*A)
+
+        # Arestas de trás
+        linhas.moveTo(*D)
+        linhas.drawTo(*E)
+
+        linhas.moveTo(*E)
+        linhas.drawTo(*F)
+
+        linhas.moveTo(*F)
+        linhas.drawTo(*D)
+
+        # Arestas que ligam frente e trás
+        linhas.moveTo(*A)
+        linhas.drawTo(*D)
+
+        linhas.moveTo(*B)
+        linhas.drawTo(*E)
+
+        linhas.moveTo(*C)
+        linhas.drawTo(*F)
+
+        # Adiciona as linhas ao objeto
+        arestas = triangulo.attachNewNode(linhas.create())
+
+        return triangulo
+
+
+    # ======================================================
+    # CRIAR CONE
+    # ======================================================
+
+    def criar_cone(self):
+
+        # --------------------------------------------------
+        # CONFIGURAÇÕES
+        # --------------------------------------------------
+
+        raio = 1.0
+
+        altura = 2.5
+
+        segmentos = 32
+
+
+        # --------------------------------------------------
+        # VÉRTICES
+        # --------------------------------------------------
+
+        formato = GeomVertexFormat.getV3n3()
+
+        dados = GeomVertexData(
+            "cone",
+            formato,
+            Geom.UHStatic
+        )
+
+        # Base + topo + centro da base.
+
+        dados.setNumRows(
+            segmentos + 2
+        )
+
+
+        vertices = GeomVertexWriter(
+            dados,
+            "vertex"
+        )
+
+        normais = GeomVertexWriter(
+            dados,
+            "normal"
+        )
+
+
+        # --------------------------------------------------
+        # BASE DO CONE
+        # --------------------------------------------------
+
+        for i in range(segmentos):
+
+            theta = (
+                2
+                *
+                math.pi
+                *
+                i
+                /
+                segmentos
+            )
+
+            x = (
+                raio
+                *
+                math.cos(theta)
+            )
+
+            y = (
+                raio
+                *
+                math.sin(theta)
+            )
+
+            z = -altura / 2
+
+
+            vertices.addData3f(
+                x,
+                y,
+                z
+            )
+
+
+            # Normal aproximada.
+
+            normal = Vec3(
+                x,
+                y,
+                0
+            )
+
+            normal.normalize()
+
+            normais.addData3f(
+                normal.x,
+                normal.y,
+                normal.z
+            )
+
+
+        # --------------------------------------------------
+        # VÉRTICE DO TOPO
+        # --------------------------------------------------
+
+        indice_topo = segmentos
+
+        vertices.addData3f(
+            0,
+            0,
+            altura / 2
+        )
+
+        normais.addData3f(
+            0,
+            0,
+            1
+        )
+
+
+        # --------------------------------------------------
+        # CENTRO DA BASE
+        # --------------------------------------------------
+
+        indice_centro = segmentos + 1
+
+        vertices.addData3f(
+            0,
+            0,
+            -altura / 2
+        )
+
+        normais.addData3f(
+            0,
+            0,
+            -1
+        )
+
+
+        # --------------------------------------------------
+        # TRIÂNGULOS
+        # --------------------------------------------------
+
+        primitivas = GeomTriangles(
+            Geom.UHStatic
+        )
+
+
+        for i in range(segmentos):
+
+            atual = i
+
+            proximo = (
+                (i + 1)
+                %
+                segmentos
+            )
+
+
+            # --------------------------------------------------
+            # LATERAL DO CONE
+            # --------------------------------------------------
+
+            primitivas.addVertices(
+                atual,
+                proximo,
+                indice_topo
+            )
+
+
+            # --------------------------------------------------
+            # BASE DO CONE
+            # --------------------------------------------------
+
+            primitivas.addVertices(
+                indice_centro,
+                proximo,
+                atual
+            )
+
+
+        # --------------------------------------------------
+        # GEOMETRIA
+        # --------------------------------------------------
+
+        geom = Geom(
+            dados
+        )
+
+        geom.addPrimitive(
+            primitivas
+        )
+
+
+        # --------------------------------------------------
+        # NODE
+        # --------------------------------------------------
+
+        node = GeomNode(
+            "cone"
+        )
+
+        node.addGeom(
+            geom
+        )
+
+        cone = self.render.attachNewNode(
+            node
+        )
+
+        return cone
+
+
+    # ======================================================
+    # ATALHOS PARA CARREGAR OBJETOS
+    # ======================================================
+
+    def _carregar_cubo(self):
+
+        self.carregar_objeto(
+            "cubo"
+        )
+
+
+    def _carregar_esfera(self):
+
+        self.carregar_objeto(
+            "esfera"
+        )
+
+
+    def _carregar_triangulo(self):
+
+        self.carregar_objeto(
+            "triangulo"
+        )
+
+
+    def _carregar_cone(self):
+
+        self.carregar_objeto(
+            "cone"
+        )
+
+
+    # ======================================================
+    # ATUALIZAR CÂMERA
+    # ======================================================
+
+    def _atualizar_camera(self):
+
+        # --------------------------------------------------
+        # CONVERTE GRAUS PARA RADIANOS
+        # --------------------------------------------------
+
+        yaw_rad = math.radians(
+            self.yaw
+        )
+
+        pitch_rad = math.radians(
+            self.pitch
+        )
+
+
+        # --------------------------------------------------
+        # COORDENADAS ESFÉRICAS
+        # --------------------------------------------------
+
+        x = (
+            self.alvo.x
+            +
+            self.distancia
+            *
+            math.cos(pitch_rad)
+            *
+            math.sin(yaw_rad)
+        )
+
+
+        y = (
+            self.alvo.y
+            +
+            self.distancia
+            *
+            math.cos(pitch_rad)
+            *
+            math.cos(yaw_rad)
+        )
+
+
+        z = (
+            self.alvo.z
+            +
+            self.distancia
+            *
+            math.sin(pitch_rad)
+        )
+
+
+        # --------------------------------------------------
+        # POSICIONA A CÂMERA
+        # --------------------------------------------------
+
+        self.camera.setPos(
+            x,
+            y,
+            z
+        )
+
+
+        # --------------------------------------------------
+        # CÂMERA SEMPRE OLHA PARA O ALVO
+        # --------------------------------------------------
+
+        self.camera.lookAt(
+            self.alvo
+        )
+
+
+    # ======================================================
+    # MOUSE DOWN
+    # ======================================================
+
+    def _mouse_down(self, tipo):
+
+        if not self.mouseWatcherNode.hasMouse():
+
+            return
+
+
+        # Guarda posição inicial do mouse.
+
+        self.mouse_anterior = Vec2(
+            self.mouseWatcherNode.getMouseX(),
+            self.mouseWatcherNode.getMouseY()
+        )
+
+
+        # --------------------------------------------------
+        # ROTAÇÃO
+        # --------------------------------------------------
+
+        if tipo == "rotacao":
+
+            self.mouse_rotacionando = True
+
+            self.mouse_movendo = False
+
+
+        # --------------------------------------------------
+        # PAN
+        # --------------------------------------------------
+
+        elif tipo == "pan":
+
+            self.mouse_movendo = True
+
+            self.mouse_rotacionando = False
+
+
+    # ======================================================
+    # MOUSE UP
+    # ======================================================
+
+    def _mouse_up(self, tipo):
+
+        if tipo == "rotacao":
+
+            self.mouse_rotacionando = False
+
+
+        elif tipo == "pan":
+
+            self.mouse_movendo = False
+
+
+        # Não há mais mouse pressionado.
+
+        if (
+            not self.mouse_rotacionando
+            and
+            not self.mouse_movendo
+        ):
+
+            self.mouse_anterior = None
+
+
+    # ======================================================
+    # TASK CONTÍNUA DO MOUSE
+    # ======================================================
+
+    def _task_mouse(self, tarefa):
+
+        # --------------------------------------------------
+        # Verifica se existe mouse
+        # --------------------------------------------------
+
+        if not self.mouseWatcherNode.hasMouse():
+
+            return Task.cont
+
+
+        # --------------------------------------------------
+        # Se não estiver interagindo, não faz nada.
+        # --------------------------------------------------
+
+        if (
+            not self.mouse_rotacionando
+            and
+            not self.mouse_movendo
+        ):
+
+            return Task.cont
+
+
+        # --------------------------------------------------
+        # Mouse atual
+        # --------------------------------------------------
+
+        mouse_atual = Vec2(
+            self.mouseWatcherNode.getMouseX(),
+            self.mouseWatcherNode.getMouseY()
+        )
+
+
+        # --------------------------------------------------
+        # Primeira leitura
+        # --------------------------------------------------
+
+        if self.mouse_anterior is None:
+
+            self.mouse_anterior = mouse_atual
+
+            return Task.cont
+
+
+        # --------------------------------------------------
+        # Diferença do mouse
+        # --------------------------------------------------
+
+        diferenca_x = (
+            mouse_atual.x
+            -
+            self.mouse_anterior.x
+        )
+
+
+        diferenca_y = (
+            mouse_atual.y
+            -
+            self.mouse_anterior.y
+        )
+
+
+        # --------------------------------------------------
+        # ROTAÇÃO
+        # --------------------------------------------------
+
+        if self.mouse_rotacionando:
+
+            # Movimento horizontal
+            # esquerda/direita = yaw
+
+            self.yaw -= (
+                diferenca_x
+                *
+                self.sensibilidade_rotacao
+            )
+
+
+            # Movimento vertical
+            # cima/baixo = pitch
+
+            self.pitch += (
+                diferenca_y
+                *
+                self.sensibilidade_rotacao
+            )
+
+
+            # --------------------------------------------------
+            # LIMITA O PITCH
+            # --------------------------------------------------
+
+            self.pitch = max(
+                self.pitch_minimo,
+                min(
+                    self.pitch_maximo,
+                    self.pitch
+                )
+            )
+
+
+            # --------------------------------------------------
+            # ATUALIZA A CÂMERA
+            # --------------------------------------------------
+
+            self._atualizar_camera()
+
+
+        # --------------------------------------------------
+        # PAN
+        # --------------------------------------------------
+
+        elif self.mouse_movendo:
+
+            self._executar_pan(
+                diferenca_x,
+                diferenca_y
+            )
+
+
+        # --------------------------------------------------
+        # GUARDA POSIÇÃO ATUAL
+        # --------------------------------------------------
+
+        self.mouse_anterior = mouse_atual
+
+
+        return Task.cont
+
+
+    # ======================================================
+    # PAN DA CÂMERA
+    # ======================================================
+
+    def _executar_pan(
+        self,
+        diferenca_x,
+        diferenca_y
+    ):
+
+        # --------------------------------------------------
+        # PEGA A ORIENTAÇÃO ATUAL DA CÂMERA
+        # --------------------------------------------------
+
+        quat_camera = self.camera.getQuat(
+            self.render
+        )
+
+
+        # --------------------------------------------------
+        # EIXO DIREITO DA CÂMERA
+        # --------------------------------------------------
+
+        eixo_direito = quat_camera.xform(
+            Vec3(
+                1,
+                0,
+                0
+            )
+        )
+
+
+        # --------------------------------------------------
+        # EIXO VERTICAL DA CÂMERA
+        # --------------------------------------------------
+
+        eixo_cima = quat_camera.xform(
+            Vec3(
+                0,
+                0,
+                1
+            )
+        )
+
+
+        # --------------------------------------------------
+        # VELOCIDADE DO PAN
+        # --------------------------------------------------
+
+        velocidade = (
+            self.distancia
+            *
+            0.8
+            *
+            self.sensibilidade_pan
+        )
+
+
+        # --------------------------------------------------
+        # CALCULA DESLOCAMENTO
+        # --------------------------------------------------
+
+        deslocamento = (
+            eixo_direito
+            *
+            (
+                -diferenca_x
+                *
+                velocidade
+            )
+        )
+
+
+        deslocamento += (
+            eixo_cima
+            *
+            (
+                -diferenca_y
+                *
+                velocidade
+            )
+        )
+
+
+        # --------------------------------------------------
+        # MOVE O ALVO
+        # --------------------------------------------------
+
+        self.alvo += deslocamento
+
+
+        # --------------------------------------------------
+        # ATUALIZA A CÂMERA
+        # --------------------------------------------------
+
+        self._atualizar_camera()
+
+
+    # ======================================================
+    # ZOOM
+    # ======================================================
+
+    def _zoom(self, direcao):
+
+        # --------------------------------------------------
+        # Zoom positivo:
+        # aproxima
+        #
+        # Zoom negativo:
+        # afasta
+        # --------------------------------------------------
+
+        self.distancia -= (
+            direcao
+            *
+            self.sensibilidade_zoom
+        )
+
+
+        # --------------------------------------------------
+        # LIMITES DO ZOOM
+        # --------------------------------------------------
+
+        self.distancia = max(
+            self.distancia_minima,
+            min(
+                self.distancia_maxima,
+                self.distancia
+            )
+        )
+
+
+        # --------------------------------------------------
+        # ATUALIZA CÂMERA
+        # --------------------------------------------------
+
+        self._atualizar_camera()
+
+
+    # ======================================================
+    # RESETAR CÂMERA
+    # ======================================================
+
+    def _resetar_camera(self):
+
+        # --------------------------------------------------
+        # Restaura alvo
+        # --------------------------------------------------
+
+        self.alvo = Point3(
+            self.alvo_inicial
+        )
+
+
+        # --------------------------------------------------
+        # Restaura yaw
+        # --------------------------------------------------
+
+        self.yaw = (
+            self.yaw_inicial
+        )
+
+
+        # --------------------------------------------------
+        # Restaura pitch
+        # --------------------------------------------------
+
+        self.pitch = (
+            self.pitch_inicial
+        )
+
+
+        # --------------------------------------------------
+        # Restaura distância
+        # --------------------------------------------------
+
+        self.distancia = (
+            self.distancia_inicial
+        )
+
+
+        # --------------------------------------------------
+        # Atualiza câmera
+        # --------------------------------------------------
+
+        self._atualizar_camera()
+
+
+# ==========================================================
+# INICIAR A APLICAÇÃO
+# ==========================================================
+
+app = Aplicacao3D()
+
+app.run()
