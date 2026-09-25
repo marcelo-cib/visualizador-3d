@@ -1,0 +1,58 @@
+[
+  {
+    "nome": "SUV",
+    "categoria": "SUV",
+    "arquivo": "SUV.glb",
+    "descricao": "Veículo utilitário esportivo",
+    "id": 1,
+    "codigo": "suv"
+  },
+  {
+    "nome": "Car",
+    "categoria": "Automóvel",
+    "arquivo": "Car.glb",
+    "descricao": "Veículo de passeio",
+    "id": 2,
+    "codigo": "car"
+  },
+  {
+    "nome": "Car_un",
+    "categoria": "Automóvel",
+    "arquivo": "Car_un.glb",
+    "descricao": "Veículo de passeio",
+    "id": 3,
+    "codigo": "car_un"
+  },
+  {
+    "nome": "Police_car",
+    "categoria": "Polícia",
+    "arquivo": "Police_car.glb",
+    "descricao": "Veículo policial",
+    "id": 4,
+    "codigo": "police_car"
+  },
+  {
+    "nome": "Sports_car",
+    "categoria": "Esportivo",
+    "arquivo": "Sports_car.glb",
+    "descricao": "Carro esportivo",
+    "id": 5,
+    "codigo": "sports_car"
+  },
+  {
+    "nome": "Sports_car_1",
+    "categoria": "Esportivo",
+    "arquivo": "Sports_car_1.glb",
+    "descricao": "Carro esportivo",
+    "id": 6,
+    "codigo": "sports_car_1"
+  },
+  {
+    "nome": "Taxi",
+    "categoria": "Táxi",
+    "arquivo": "Taxi.glb",
+    "descricao": "Táxi",
+    "id": 7,
+    "codigo": "taxi"
+  }
+]
