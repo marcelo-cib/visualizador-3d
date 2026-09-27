@@ -1,0 +1,162 @@
+[
+  {
+    "id": 1,
+    "codigo": "classico_01",
+    "nome": "Clássico 01",
+    "categoria": "Clássicos",
+    "arquivo": "classico/classico_01_dominus.glb",
+    "descricao": "Veículo clássico modelo Dominus."
+  },
+  {
+    "id": 2,
+    "codigo": "classico_02",
+    "nome": "Clássico 02",
+    "categoria": "Clássicos",
+    "arquivo": "classico/classico_02_convertible.glb",
+    "descricao": "Veículo clássico conversível."
+  },
+  {
+    "id": 3,
+    "codigo": "classico_03",
+    "nome": "Clássico 03",
+    "categoria": "Clássicos",
+    "arquivo": "classico/classico_03_car_80s.glb",
+    "descricao": "Carro clássico inspirado nos anos 80."
+  },
+  {
+    "id": 4,
+    "codigo": "esportivo_01",
+    "nome": "Esportivo 01",
+    "categoria": "Esportivos",
+    "arquivo": "esportivos/sports_01_Pickup_Truck.glb",
+    "descricao": "Veículo esportivo tipo pickup."
+  },
+  {
+    "id": 5,
+    "codigo": "esportivo_02",
+    "nome": "Esportivo 02",
+    "categoria": "Esportivos",
+    "arquivo": "esportivos/sports_02_Range_Rover.glb",
+    "descricao": "Veículo esportivo utilitário."
+  },
+  {
+    "id": 6,
+    "codigo": "esportivo_03",
+    "nome": "Esportivo 03",
+    "categoria": "Esportivos",
+    "arquivo": "esportivos/sports_03_car.glb",
+    "descricao": "Carro esportivo."
+  },
+  {
+    "id": 7,
+    "codigo": "esportivo_04",
+    "nome": "Esportivo 04",
+    "categoria": "Esportivos",
+    "arquivo": "esportivos/sports_04_car_1.glb",
+    "descricao": "Carro esportivo."
+  },
+  {
+    "id": 8,
+    "codigo": "luxo_01",
+    "nome": "Luxo 01",
+    "categoria": "Luxo",
+    "arquivo": "luxo/luxo_01_Lamborghini_Ignition_Labs.glb",
+    "descricao": "Veículo de luxo."
+  },
+  {
+    "id": 9,
+    "codigo": "luxo_02",
+    "nome": "Luxo 02",
+    "categoria": "Luxo",
+    "arquivo": "luxo/luxo_02_Camaro_ZL1.glb",
+    "descricao": "Veículo esportivo de luxo."
+  },
+  {
+    "id": 10,
+    "codigo": "luxo_03",
+    "nome": "Luxo 03",
+    "categoria": "Luxo",
+    "arquivo": "luxo/luxo_03_Chevrolet_Camaro.glb",
+    "descricao": "Veículo esportivo de luxo."
+  },
+  {
+    "id": 11,
+    "codigo": "luxo_04",
+    "nome": "Luxo 04",
+    "categoria": "Luxo",
+    "arquivo": "luxo/luxo_04_Rolls_Royce.glb",
+    "descricao": "Veículo de luxo."
+  },
+  {
+    "id": 12,
+    "codigo": "luxo_05",
+    "nome": "Luxo 05",
+    "categoria": "Luxo",
+    "arquivo": "luxo/luxo_05_Dodge_Challenger.glb",
+    "descricao": "Veículo esportivo de luxo."
+  },
+  {
+    "id": 13,
+    "codigo": "sedan_01",
+    "nome": "Sedan / SUV 01",
+    "categoria": "Sedan / SUV",
+    "arquivo": "sedan/sedan_01_SUV.glb",
+    "descricao": "Veículo utilitário esportivo."
+  },
+  {
+    "id": 14,
+    "codigo": "sedan_02",
+    "nome": "Sedan / Truck 02",
+    "categoria": "Sedan / Truck",
+    "arquivo": "sedan/sedan_02_Truck.glb",
+    "descricao": "Veículo utilitário tipo caminhonete."
+  },
+  {
+    "id": 15,
+    "codigo": "sedan_03",
+    "nome": "Sedan / Van 03",
+    "categoria": "Sedan / Van",
+    "arquivo": "sedan/sedan_03_Van.glb",
+    "descricao": "Veículo utilitário tipo van."
+  },
+  {
+    "id": 16,
+    "codigo": "servico_01",
+    "nome": "Police Car 01",
+    "categoria": "Serviço",
+    "arquivo": "servico/servico_01_Police_car.glb",
+    "descricao": "Veículo policial."
+  },
+  {
+    "id": 17,
+    "codigo": "servico_02",
+    "nome": "Police Car 02",
+    "categoria": "Serviço",
+    "arquivo": "servico/servico_02_Police_car_2.glb",
+    "descricao": "Veículo policial."
+  },
+  {
+    "id": 18,
+    "codigo": "servico_03",
+    "nome": "Taxi",
+    "categoria": "Serviço",
+    "arquivo": "servico/servico_03_Taxi.glb",
+    "descricao": "Táxi."
+  },
+  {
+    "id": 19,
+    "codigo": "utilitario_01",
+    "nome": "Car 01",
+    "categoria": "Utilitários",
+    "arquivo": "utilitarios/utilitario_01_Car.glb",
+    "descricao": "Veículo de passeio."
+  },
+  {
+    "id": 20,
+    "codigo": "utilitario_02",
+    "nome": "Car_un",
+    "categoria": "Utilitários",
+    "arquivo": "utilitarios/utilitario_02_Car_un.glb",
+    "descricao": "Veículo de passeio."
+  }
+]
